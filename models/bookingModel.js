@@ -11,6 +11,10 @@ var bookingSchema = Schema({
         "type": Schema.Types.ObjectId,
         "ref" : "hotel"
     },
+    "discountId": {
+        "type": Schema.Types.ObjectId,
+        "ref": "discount"
+    },
     "fromDate": {
         "type": "Number"
     },

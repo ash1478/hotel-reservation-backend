@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const discountSchema = require('./discountModel');
 const roomSchema = require('./roomModel');
 let Schema = mongoose.Schema;
 
@@ -44,7 +45,11 @@ var hotelSchema = Schema({
             "String"
         ]
     },
-    "rooms":[roomSchema]
+    "rooms":[roomSchema],
+    "discounts" : [{
+        "type": Schema.Types.ObjectId,
+        "ref": "discount"
+    }]
 }, { timestamps: true });
 let Hotel = mongoose.model('hotel', hotelSchema);
 module.exports = Hotel; 

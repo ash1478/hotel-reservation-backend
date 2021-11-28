@@ -28,12 +28,12 @@ var roomSchema = Schema({
         ]
     },
 
-    "availability": [{
-        "start": {
-            "type": Date
+    "blocked": [{
+        "from": {
+            "type": "Number"
         },
-        "end": {
-            "type": Date
+        "to": {
+            "type": "Number"
         },
         "roomCount": {
             "type": "Number"

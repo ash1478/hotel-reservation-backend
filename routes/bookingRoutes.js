@@ -43,14 +43,25 @@ router.post("/", verifyToken, async (req, res) => {
                     }
                 });
 
-                if (f) order = await Booking.create({
-                    "hotelId": hotelId,
-                    "userId": userId,
-                    "fromDate": from,
-                    "toDate": to,
-                    "price": price,
-                    "rooms": rooms
-                });
+                if (f) {
+                    order = await Booking.create({
+                        "hotelId": hotelId,
+                        "userId": userId,
+                        "fromDate": from,
+                        "toDate": to,
+                        "price": price,
+                        "rooms": rooms
+                    });
+
+                    rooms.forEach(async(r) => {
+                        await Hotel.updateOne({ _id: hotel._id, "rooms.type": r.roomType }, {
+                            $push: {
+                                "rooms.$.blocked": { "from": order.fromDate, "to": order.toDate, "roomCount": r.totalRooms }
+                            }
+                        });
+                    });
+                }
+
 
                 return true;
 
@@ -70,6 +81,13 @@ router.post("/", verifyToken, async (req, res) => {
                         "price": price,
                         "rooms": rooms
                     });
+                    rooms.forEach(async (r) => {
+                        await Hotel.updateOne({ _id: hotel._id, "rooms.type": r.roomType }, {
+                            $push: {
+                                "rooms.$.blocked": { "from": order.fromDate, "to": order.toDate, "roomCount": r.totalRooms }
+                            }
+                        });
+                    });
 
                     return true;
                 }
@@ -82,45 +100,60 @@ router.post("/", verifyToken, async (req, res) => {
 
         await session.endSession();
 
-        if(f) res.status(201).send({ success: true, data: order });
+        if (f) res.status(201).send({ success: true, data: order });
 
     }
 });
 
 //Get booking detail
-router.get("/:bookingId",verifyToken, async(req,res)=>{
+router.get("/:bookingId", verifyToken, async (req, res) => {
 
     const bookingId = req.params.bookingId;
 
-    const booking = await Booking.findById(bookingId,{"rooms._id" : 0}).populate('hotelId','name desc imageUrls location rooms').populate('userId', {token : 0});
+    const booking = await Booking.findById(bookingId, { "rooms._id": 0 }).populate('hotelId', 'name desc imageUrls location rooms').populate('userId', { token: 0 });
 
-    if(booking){
-        res.status(200).send({success:true,data:booking});
+    if (booking) {
+        res.status(200).send({ success: true, data: booking });
     }
     else {
-        res.status(400).send({success:false,error:"No booking available with this Id."});
+        res.status(400).send({ success: false, error: "No booking available with this Id." });
+    }
+});
+
+//Cancel booking
+router.post("/:bookingId", verifyToken, async (req, res) => {
+
+    const bookingId = req.params.bookingId;
+
+    const booking = await Booking.deleteOne({ _id: bookingId });
+
+    if (booking) {
+        res.status(200).send({ success: true, data: booking });
+    }
+    else {
+        res.status(400).send({ success: false, error: "No booking available with this Id." });
     }
 });
 
 //List user bookings
-router.get("/user/:userId",verifyToken,async (req,res)=>{
-   
+router.get("/user/:userId", verifyToken, async (req, res) => {
+
     let token = req.headers.authorization.split(' ')[1];
     let userId = req.params.userId;
     let user = jwt.decode(token, process.env.TOKEN_KEY);
 
-    if(user._id === userId){
-        let bookings = await Booking.find({"userId": userId}).populate('hotelId','name imageUrls location');
+    if (user._id === userId) {
+        let bookings = await Booking.find({ "userId": userId }).populate('hotelId', 'name imageUrls location');
 
-        if(bookings.length != 0){
-            res.status(201).send({ success: true, data: bookings});
+        if (bookings.length != 0) {
+            res.status(201).send({ success: true, data: bookings });
         }
-        else{
+        else {
             res.status(401).send({ success: false, error: "No available bookings for this user." })
         }
     }
     else {
-        res.status(401).send({success:false,error:"Access Denied."})
+        res.status(401).send({ success: false, error: "Access Denied." })
     }
 
 
