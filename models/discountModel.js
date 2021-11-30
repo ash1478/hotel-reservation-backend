@@ -17,6 +17,6 @@ let discountSchema = Schema({
     }
 },{timestamps: true});
 
-let Discount = mongoose.model('discount',discountSchema,'discount');
+let Discount = mongoose.model('discount',discountSchema);
 
 module.exports = Discount;

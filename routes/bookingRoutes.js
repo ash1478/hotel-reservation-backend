@@ -8,10 +8,11 @@ const Hotel = require('../models/hotelModel');
 //Make a booking
 router.post("/", verifyToken, async (req, res) => {
     if (req.body) {
-        let { hotelId, price, from, to, rooms } = req.body;
+        let { hotelId, price, from, to, rooms, discountId } = req.body;
         console.log({ hotelId, price, from, to, rooms });
         let token = req.headers.authorization.split(' ')[1];
         let userId = jwt.decode(token, process.env.TOKEN_KEY)._id;
+
 
         const session = await Booking.startSession();
 
@@ -19,9 +20,9 @@ router.post("/", verifyToken, async (req, res) => {
         let f = true;
         await session.withTransaction(async () => {
             const hotel = await Hotel.findById(hotelId);
-            console.log(hotel);
+            //console.log(hotel);
             const bookings = await Booking.find({
-                "hotelId": hotelId,
+                "hotel": hotelId,
                 "fromDate": { $lte: from },
                 "toDate": { $gte: to }
             });
@@ -44,16 +45,26 @@ router.post("/", verifyToken, async (req, res) => {
                 });
 
                 if (f) {
+                    if(discountId != "null")
                     order = await Booking.create({
-                        "hotelId": hotelId,
-                        "userId": userId,
+                        "hotel": hotelId,
+                        "user": userId,
+                        "fromDate": from,
+                        "toDate": to,
+                        "price": price,
+                        "rooms": rooms,
+                        "discount": discountId
+                    });
+                    else order = await Booking.create({
+                        "hotel": hotelId,
+                        "user": userId,
                         "fromDate": from,
                         "toDate": to,
                         "price": price,
                         "rooms": rooms
                     });
 
-                    rooms.forEach(async(r) => {
+                    rooms.forEach(async (r) => {
                         await Hotel.updateOne({ _id: hotel._id, "rooms.type": r.roomType }, {
                             $push: {
                                 "rooms.$.blocked": { "from": order.fromDate, "to": order.toDate, "roomCount": r.totalRooms }
@@ -72,10 +83,19 @@ router.post("/", verifyToken, async (req, res) => {
                     if (room.totalRooms > hotel.roomCount[room.roomType.split("-")[0]]) { flag = 1; }
                 });
                 if (flag === 0) {
-                    console.log(rooms[0]);
-                    order = await Booking.create({
-                        "hotelId": hotelId,
-                        "userId": userId,
+                    if (discountId != "null")
+                        order = await Booking.create({
+                            "hotel": hotelId,
+                            "user": userId,
+                            "fromDate": from,
+                            "toDate": to,
+                            "price": price,
+                            "rooms": rooms,
+                            "discount": discountId
+                        });
+                    else order = await Booking.create({
+                        "hotel": hotelId,
+                        "user": userId,
                         "fromDate": from,
                         "toDate": to,
                         "price": price,
@@ -110,7 +130,8 @@ router.get("/:bookingId", verifyToken, async (req, res) => {
 
     const bookingId = req.params.bookingId;
 
-    const booking = await Booking.findById(bookingId, { "rooms._id": 0 }).populate('hotelId', 'name desc imageUrls location rooms').populate('userId', { token: 0 });
+    const booking = await Booking.findById(bookingId, { "rooms._id": 0 }).populate('hotel', 'name desc imageUrls location rooms').populate('user', { token: 0 })
+        .populate('discount');
 
     if (booking) {
         res.status(200).send({ success: true, data: booking });
@@ -143,7 +164,7 @@ router.get("/user/:userId", verifyToken, async (req, res) => {
     let user = jwt.decode(token, process.env.TOKEN_KEY);
 
     if (user._id === userId) {
-        let bookings = await Booking.find({ "userId": userId }).populate('hotelId', 'name imageUrls location');
+        let bookings = await Booking.find({ "user": userId }).populate('hotel', 'name imageUrls location');
 
         if (bookings.length != 0) {
             res.status(201).send({ success: true, data: bookings });

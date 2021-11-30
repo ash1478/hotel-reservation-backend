@@ -3,17 +3,18 @@ const roomSchema = require("./roomModel");
 let Schema = mongoose.Schema;
 
 var bookingSchema = Schema({
-    "userId": {
+    "user": {
         "type": Schema.Types.ObjectId,
         "ref": "user"
     },
-    "hotelId": {
+    "hotel": {
         "type": Schema.Types.ObjectId,
         "ref" : "hotel"
     },
-    "discountId": {
+    "discount": {
         "type": Schema.Types.ObjectId,
-        "ref": "discount"
+        "ref": "discount",
+        "required" : false
     },
     "fromDate": {
         "type": "Number"
